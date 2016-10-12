@@ -14,10 +14,11 @@ type ERBRenderer interface {
 }
 
 type erbRenderer struct {
-	fs     boshsys.FileSystem
-	runner boshsys.CmdRunner
-	logger boshlog.Logger
-	logTag string
+	fs         boshsys.FileSystem
+	runner     boshsys.CmdRunner
+	rubyFinder RubyReleaseFinder
+	logger     boshlog.Logger
+	logTag     string
 
 	rendererScript string
 }
@@ -25,13 +26,15 @@ type erbRenderer struct {
 func NewERBRenderer(
 	fs boshsys.FileSystem,
 	runner boshsys.CmdRunner,
+	rubyFinder RubyReleaseFinder,
 	logger boshlog.Logger,
 ) ERBRenderer {
 	return erbRenderer{
-		fs:     fs,
-		runner: runner,
-		logger: logger,
-		logTag: "erbRenderer",
+		fs:         fs,
+		runner:     runner,
+		rubyFinder: rubyFinder,
+		logger:     logger,
+		logTag:     "erbRenderer",
 
 		rendererScript: templateEvaluationContextRb,
 	}
@@ -63,8 +66,7 @@ func (r erbRenderer) Render(srcPath, dstPath string, context TemplateEvaluationC
 	}
 
 	command := boshsys.Command{
-		// bosh-init can't know the internal package structure... i.e. ruby_aws_cpi/bin
-		Name: "ruby",
+		Name: r.rubyFinder.RubyExecutable(),
 		Args: []string{rendererScriptPath, contextPath, srcPath, dstPath},
 	}
 

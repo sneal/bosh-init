@@ -194,28 +194,28 @@ func (f *factory) loadSSHTunnelFactory() bisshtunnel.Factory {
 	return f.sshTunnelFactory
 }
 
-func (f *factory) loadInstanceManagerFactory() biinstance.ManagerFactory {
-	if f.instanceManagerFactory != nil {
-		return f.instanceManagerFactory
+func (d *deploymentManagerFactory2) loadInstanceManagerFactory() biinstance.ManagerFactory {
+	if d.f.instanceManagerFactory != nil {
+		return d.f.instanceManagerFactory
 	}
 
-	f.instanceManagerFactory = biinstance.NewManagerFactory(
-		f.loadSSHTunnelFactory(),
-		f.loadInstanceFactory(),
-		f.logger,
+	d.f.instanceManagerFactory = biinstance.NewManagerFactory(
+		d.f.loadSSHTunnelFactory(),
+		d.loadInstanceFactory(),
+		d.f.logger,
 	)
-	return f.instanceManagerFactory
+	return d.f.instanceManagerFactory
 }
 
-func (f *factory) loadInstanceFactory() biinstance.Factory {
-	if f.instanceFactory != nil {
-		return f.instanceFactory
+func (d *deploymentManagerFactory2) loadInstanceFactory() biinstance.Factory {
+	if d.f.instanceFactory != nil {
+		return d.f.instanceFactory
 	}
 
-	f.instanceFactory = biinstance.NewFactory(
-		f.loadBuilderFactory(),
+	d.f.instanceFactory = biinstance.NewFactory(
+		d.loadBuilderFactory(),
 	)
-	return f.instanceFactory
+	return d.f.instanceFactory
 }
 
 func (f *factory) loadReleaseJobResolver() bideplrel.JobResolver {
@@ -227,32 +227,34 @@ func (f *factory) loadReleaseJobResolver() bideplrel.JobResolver {
 	return f.releaseJobResolver
 }
 
-func (f *factory) loadBuilderFactory() biinstancestate.BuilderFactory {
-	if f.stateBuilderFactory != nil {
-		return f.stateBuilderFactory
+func (d *deploymentManagerFactory2) loadBuilderFactory() biinstancestate.BuilderFactory {
+	if d.f.stateBuilderFactory != nil {
+		return d.f.stateBuilderFactory
 	}
 
-	erbRenderer := bitemplateerb.NewERBRenderer(f.fs, f.loadCMDRunner(), f.logger)
-	jobRenderer := bitemplate.NewJobRenderer(erbRenderer, f.fs, f.logger)
-	jobListRenderer := bitemplate.NewJobListRenderer(jobRenderer, f.logger)
+	target, _ := d.loadTargetProvider().NewTarget()
+	erbReleaseFinder := bitemplateerb.NewRubyReleaseFinder(target.PackagesPath(), d.f.logger)
+	erbRenderer := bitemplateerb.NewERBRenderer(d.f.fs, d.f.loadCMDRunner(), erbReleaseFinder, d.f.logger)
+	jobRenderer := bitemplate.NewJobRenderer(erbRenderer, d.f.fs, d.f.logger)
+	jobListRenderer := bitemplate.NewJobListRenderer(jobRenderer, d.f.logger)
 
-	sha1Calculator := bicrypto.NewSha1Calculator(f.fs)
+	sha1Calculator := bicrypto.NewSha1Calculator(d.f.fs)
 
 	renderedJobListCompressor := bitemplate.NewRenderedJobListCompressor(
-		f.fs,
-		f.loadCompressor(),
+		d.f.fs,
+		d.f.loadCompressor(),
 		sha1Calculator,
-		f.logger,
+		d.f.logger,
 	)
 
-	f.stateBuilderFactory = biinstancestate.NewBuilderFactory(
-		f.loadCompiledPackageRepo(),
-		f.loadReleaseJobResolver(),
+	d.f.stateBuilderFactory = biinstancestate.NewBuilderFactory(
+		d.f.loadCompiledPackageRepo(),
+		d.f.loadReleaseJobResolver(),
 		jobListRenderer,
 		renderedJobListCompressor,
-		f.logger,
+		d.f.logger,
 	)
-	return f.stateBuilderFactory
+	return d.f.stateBuilderFactory
 }
 
 func (f *factory) loadDeploymentFactory() bidepl.Factory {
@@ -546,7 +548,7 @@ func (d *deploymentManagerFactory2) loadDeploymentManagerFactory() bidepl.Manage
 
 	d.deploymentManagerFactory = bidepl.NewManagerFactory(
 		d.loadVMManagerFactory(),
-		d.f.loadInstanceManagerFactory(),
+		d.loadInstanceManagerFactory(),
 		d.loadDiskManagerFactory(),
 		d.loadStemcellManagerFactory(),
 		d.f.loadDeploymentFactory(),
@@ -586,7 +588,7 @@ func (d *deploymentManagerFactory2) loadDeployer() bidepl.Deployer {
 
 	d.deployer = bidepl.NewDeployer(
 		d.loadVMManagerFactory(),
-		d.f.loadInstanceManagerFactory(),
+		d.loadInstanceManagerFactory(),
 		d.f.loadDeploymentFactory(),
 		d.f.logger,
 	)

@@ -96,8 +96,8 @@ type installerFactoryContext struct {
 }
 
 func (c *installerFactoryContext) JobRenderer() JobRenderer {
-
-	erbRenderer := bierbrenderer.NewERBRenderer(c.fs, c.runner, c.logger)
+	rubyFinder := bierbrenderer.NewRubyReleaseFinder(c.target.PackagesPath(), c.logger)
+	erbRenderer := bierbrenderer.NewERBRenderer(c.fs, c.runner, rubyFinder, c.logger)
 	jobRenderer := bitemplate.NewJobRenderer(erbRenderer, c.fs, c.logger)
 	jobListRenderer := bitemplate.NewJobListRenderer(jobRenderer, c.logger)
 

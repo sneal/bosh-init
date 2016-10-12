@@ -1,6 +1,7 @@
 package fileutil
 
 import (
+	"runtime"
 	"strings"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
@@ -48,9 +49,16 @@ func (c tarballCompressor) DecompressFileToDir(tarballPath string, dir string, o
 	tarballPath = strings.Replace(tarballPath, "\\", "/", -1)
 	dir = strings.Replace(dir, "\\", "/", -1)
 
-	_, _, _, err := c.cmdRunner.RunCommand("tar", sameOwnerOption, "--force-local", "-xzvf", tarballPath, "-C", dir)
-	if err != nil {
-		return bosherr.WrapError(err, "Shelling out to tar")
+	if runtime.GOOS == "windows" {
+		_, _, _, err := c.cmdRunner.RunCommand("tar", sameOwnerOption, "--force-local", "-xzvf", tarballPath, "-C", dir)
+		if err != nil {
+			return bosherr.WrapError(err, "Shelling out to tar")
+		}
+	} else {
+		_, _, _, err := c.cmdRunner.RunCommand("tar", sameOwnerOption, "-xzvf", tarballPath, "-C", dir)
+		if err != nil {
+			return bosherr.WrapError(err, "Shelling out to tar")
+		}
 	}
 
 	return nil

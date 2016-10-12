@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path"
+	"runtime"
 	"strings"
 
 	bicmd "github.com/cloudfoundry/bosh-init/cmd"
@@ -27,7 +28,14 @@ func main() {
 	logger := newLogger()
 	defer logger.HandlePanic("Main")
 	fileSystem := boshsys.NewOsFileSystemWithStrictTempRoot(logger)
-	workspaceRootPath := path.Join(os.Getenv("HOME"), ".bosh_init")
+
+	var workspaceRootPath string
+	if runtime.GOOS == "windows" {
+		workspaceRootPath = strings.Replace(path.Join(os.Getenv("USERPROFILE"), ".bosh_init"), "\\", "/", -1)
+	} else {
+		workspaceRootPath = path.Join(os.Getenv("HOME"), ".bosh_init")
+	}
+
 	ui := biui.NewConsoleUI(logger)
 
 	timeService := clock.NewClock()

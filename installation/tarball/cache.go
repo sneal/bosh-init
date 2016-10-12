@@ -51,7 +51,10 @@ func (c *cache) Save(sourcePath string, source Source) error {
 
 	err = c.fs.Rename(sourcePath, c.Path(source))
 	if err != nil {
-		return bosherr.WrapErrorf(err, "Failed to save tarball path '%s' in cache", sourcePath)
+		err = c.fs.CopyFile(sourcePath, c.Path(source))
+		if err != nil {
+			return bosherr.WrapErrorf(err, "Failed to copy tarball path '%s' in cache", sourcePath)
+		}
 	}
 
 	c.logger.Debug(c.logTag, "Saving tarball in cache at: '%s'", c.Path(source))

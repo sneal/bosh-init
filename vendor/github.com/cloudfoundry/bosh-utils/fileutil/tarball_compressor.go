@@ -1,6 +1,8 @@
 package fileutil
 
 import (
+	"strings"
+
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 )
@@ -23,14 +25,17 @@ func (c tarballCompressor) CompressFilesInDir(dir string) (string, error) {
 		return "", bosherr.WrapError(err, "Creating temporary file for tarball")
 	}
 
-	tarballPath := tarball.Name()
+	// tar on Windows must use Posix style paths
+	tarballPath := strings.Replace(strings.Replace(tarball.Name(), "\\", "/", -1), "C:", "/c", 1)
 
 	_, _, _, err = c.cmdRunner.RunCommand("tar", "czf", tarballPath, "-C", dir, ".")
 	if err != nil {
 		return "", bosherr.WrapError(err, "Shelling out to tar")
 	}
 
-	return tarballPath, nil
+	// Return a Windows path
+	return strings.Replace(tarball.Name(), "\\", "/", -1), nil
+	//return tarball.Name(), nil
 }
 
 func (c tarballCompressor) DecompressFileToDir(tarballPath string, dir string, options CompressorOptions) error {
@@ -39,7 +44,11 @@ func (c tarballCompressor) DecompressFileToDir(tarballPath string, dir string, o
 		sameOwnerOption = "--same-owner"
 	}
 
-	_, _, _, err := c.cmdRunner.RunCommand("tar", sameOwnerOption, "-xzvf", tarballPath, "-C", dir)
+	// ensure Windows paths work across shell types
+	tarballPath = strings.Replace(tarballPath, "\\", "/", -1)
+	dir = strings.Replace(dir, "\\", "/", -1)
+
+	_, _, _, err := c.cmdRunner.RunCommand("tar", sameOwnerOption, "--force-local", "-xzvf", tarballPath, "-C", dir)
 	if err != nil {
 		return bosherr.WrapError(err, "Shelling out to tar")
 	}

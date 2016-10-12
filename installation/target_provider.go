@@ -2,6 +2,7 @@ package installation
 
 import (
 	"path/filepath"
+	"strings"
 
 	biconfig "github.com/cloudfoundry/bosh-init/config"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
@@ -42,6 +43,7 @@ func (p *targetProvider) NewTarget() (Target, error) {
 		if err != nil {
 			return Target{}, bosherr.WrapError(err, "Generating installation ID")
 		}
+		installationID = strings.Split(installationID, "-")[0]
 
 		deploymentState.InstallationID = installationID
 		err := p.deploymentStateService.Save(deploymentState)

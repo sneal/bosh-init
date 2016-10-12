@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/cloudfoundry/bosh-init/installation/blobextract"
 	birelpkg "github.com/cloudfoundry/bosh-init/release/pkg"
@@ -39,7 +40,7 @@ func NewPackageCompiler(
 ) bistatepkg.Compiler {
 	return &compiler{
 		runner:              runner,
-		packagesDir:         packagesDir,
+		packagesDir:         strings.Replace(packagesDir, "\\", "/", -1),
 		fileSystem:          fileSystem,
 		compressor:          compressor,
 		blobstore:           blobstore,
@@ -71,20 +72,20 @@ func (c *compiler) Compile(pkg *birelpkg.Package) (bistatepkg.CompiledPackageRec
 	if err != nil {
 		return record, isCompiledPackage, bosherr.WrapErrorf(err, "Installing dependencies of package '%s'", pkg.Name)
 	}
-	defer func() {
-		if err = c.fileSystem.RemoveAll(c.packagesDir); err != nil {
-			c.logger.Warn(c.logTag, "Failed to remove packages dir: %s", err.Error())
-		}
-	}()
+	//	defer func() {
+	//		if err = c.fileSystem.RemoveAll(c.packagesDir); err != nil {
+	//			c.logger.Warn(c.logTag, "Failed to remove packages dir: %s", err.Error())
+	//		}
+	//	}()
 
-	c.logger.Debug(c.logTag, "Compiling package '%s/%s'", pkg.Name, pkg.Fingerprint)
-	installDir := path.Join(c.packagesDir, pkg.Name)
+	c.logger.Debug(c.logTag, "Compiling package for realz '%s/%s'", pkg.Name, pkg.Fingerprint)
+	installDir := strings.Replace(path.Join(c.packagesDir, pkg.Name), "\\", "/", -1)
 	err = c.fileSystem.MkdirAll(installDir, os.ModePerm)
 	if err != nil {
 		return record, isCompiledPackage, bosherr.WrapError(err, "Creating package install dir")
 	}
 
-	packageSrcDir := pkg.ExtractedPath
+	packageSrcDir := strings.Replace(pkg.ExtractedPath, "\\", "/", -1)
 	if !c.fileSystem.FileExists(path.Join(packageSrcDir, "packaging")) {
 		return record, isCompiledPackage, bosherr.Errorf("Packaging script for package '%s' not found", pkg.Name)
 	}
@@ -97,15 +98,17 @@ func (c *compiler) Compile(pkg *birelpkg.Package) (bistatepkg.CompiledPackageRec
 			"BOSH_INSTALL_TARGET": installDir,
 			"BOSH_PACKAGE_NAME":   pkg.Name,
 			"BOSH_PACKAGES_DIR":   c.packagesDir,
-			"PATH":                "/usr/local/bin:/usr/bin:/bin",
+			"PATH":                "/usr/local/bin:/usr/bin:/bin:/mingw64/bin",
 		},
-		UseIsolatedEnv: true,
+		UseIsolatedEnv: false,
 		WorkingDir:     packageSrcDir,
 	}
 
+	c.logger.Debug(c.logTag, "boshsys cmd: %v+", cmd)
+
 	_, _, _, err = c.runner.RunComplexCommand(cmd)
 	if err != nil {
-		return record, isCompiledPackage, bosherr.WrapError(err, "Compiling package")
+		return record, isCompiledPackage, bosherr.WrapError(err, "	 package")
 	}
 
 	tarball, err := c.compressor.CompressFilesInDir(installDir)

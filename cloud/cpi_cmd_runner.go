@@ -91,7 +91,7 @@ func (r *cpiCmdRunner) Run(context CmdContext, method string, args ...interface{
 			"BOSH_JOBS_DIR":     r.cpi.JobsDir,
 			"PATH":              "/usr/local/bin:/usr/bin:/bin:/mingw64/bin",
 		},
-		UseIsolatedEnv: true,
+		UseIsolatedEnv: false,
 		Stdin:          bytes.NewReader(inputBytes),
 	}
 	stdout, stderr, exitCode, err := r.cmdRunner.RunComplexCommand(cmd)

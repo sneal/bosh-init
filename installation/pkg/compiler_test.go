@@ -1,11 +1,12 @@
 package pkg_test
 
 import (
+	"path/filepath"
+
 	mock_state_package "github.com/cloudfoundry/bosh-init/state/pkg/mocks"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"path/filepath"
 
 	"errors"
 	"fmt"
@@ -182,7 +183,7 @@ var _ = Describe("PackageCompiler", func() {
 					"BOSH_PACKAGES_DIR":   packagesDir,
 					"PATH":                "/usr/local/bin:/usr/bin:/bin",
 				},
-				UseIsolatedEnv: true,
+				UseIsolatedEnv: false,
 				WorkingDir:     pkg.ExtractedPath,
 			}
 

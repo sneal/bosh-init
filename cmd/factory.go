@@ -227,14 +227,22 @@ func (f *factory) loadReleaseJobResolver() bideplrel.JobResolver {
 	return f.releaseJobResolver
 }
 
+func (d *deploymentManagerFactory2) loadRubyReleaseFinder() bitemplateerb.RubyReleaseFinder {
+	if d.rubyReleaseFinder != nil {
+		return d.rubyReleaseFinder
+	}
+	target, _ := d.loadTargetProvider().NewTarget()
+	d.rubyReleaseFinder = bitemplateerb.NewRubyReleaseFinder(target.PackagesPath(), d.f.logger)
+	return d.rubyReleaseFinder
+}
+
 func (d *deploymentManagerFactory2) loadBuilderFactory() biinstancestate.BuilderFactory {
 	if d.f.stateBuilderFactory != nil {
 		return d.f.stateBuilderFactory
 	}
 
-	target, _ := d.loadTargetProvider().NewTarget()
-	erbReleaseFinder := bitemplateerb.NewRubyReleaseFinder(target.PackagesPath(), d.f.logger)
-	erbRenderer := bitemplateerb.NewERBRenderer(d.f.fs, d.f.loadCMDRunner(), erbReleaseFinder, d.f.logger)
+	rubyReleaseFinder := d.loadRubyReleaseFinder()
+	erbRenderer := bitemplateerb.NewERBRenderer(d.f.fs, d.f.loadCMDRunner(), rubyReleaseFinder, d.f.logger)
 	jobRenderer := bitemplate.NewJobRenderer(erbRenderer, d.f.fs, d.f.logger)
 	jobListRenderer := bitemplate.NewJobListRenderer(jobRenderer, d.f.logger)
 
@@ -385,13 +393,13 @@ func (f *factory) loadReleaseSetValidator() birelsetmanifest.Validator {
 	return f.releaseSetValidator
 }
 
-func (f *factory) loadCloudFactory() bicloud.Factory {
-	if f.cloudFactory != nil {
-		return f.cloudFactory
+func (d *deploymentManagerFactory2) loadCloudFactory() bicloud.Factory {
+	if d.f.cloudFactory != nil {
+		return d.f.cloudFactory
 	}
 
-	f.cloudFactory = bicloud.NewFactory(f.fs, f.loadCMDRunner(), f.logger)
-	return f.cloudFactory
+	d.f.cloudFactory = bicloud.NewFactory(d.f.fs, d.f.loadCMDRunner(), d.loadRubyReleaseFinder(), d.f.logger)
+	return d.f.cloudFactory
 }
 
 type deploymentManagerFactory2 struct {
@@ -409,6 +417,7 @@ type deploymentManagerFactory2 struct {
 	stemcellManagerFactory        bistemcell.ManagerFactory
 	installerFactory              biinstall.InstallerFactory
 	deployer                      bidepl.Deployer
+	rubyReleaseFinder             bitemplateerb.RubyReleaseFinder
 }
 
 func (d *deploymentManagerFactory2) loadDeploymentPreparer() (DeploymentPreparer, error) {
@@ -429,7 +438,7 @@ func (d *deploymentManagerFactory2) loadDeploymentPreparer() (DeploymentPreparer
 		d.loadLegacyDeploymentStateMigrator(),
 		d.f.loadReleaseManager(),
 		deploymentRecord,
-		d.f.loadCloudFactory(),
+		d.loadCloudFactory(),
 		d.loadStemcellManagerFactory(),
 		d.f.loadAgentClientFactory(),
 		d.loadVMManagerFactory(),
@@ -457,7 +466,7 @@ func (d *deploymentManagerFactory2) loadDeploymentDeleter() (DeploymentDeleter, 
 		d.f.logger,
 		d.loadDeploymentStateService(),
 		d.f.loadReleaseManager(),
-		d.f.loadCloudFactory(),
+		d.loadCloudFactory(),
 		d.f.loadAgentClientFactory(),
 		d.f.loadBlobstoreFactory(),
 		d.loadDeploymentManagerFactory(),

@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	bitemplateerb "github.com/cloudfoundry/bosh-init/templatescompiler/erbrenderer"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
@@ -53,22 +55,25 @@ type CPICmdRunner interface {
 }
 
 type cpiCmdRunner struct {
-	cmdRunner boshsys.CmdRunner
-	cpi       CPI
-	logger    boshlog.Logger
-	logTag    string
+	cmdRunner         boshsys.CmdRunner
+	cpi               CPI
+	rubyReleaseFinder bitemplateerb.RubyReleaseFinder
+	logger            boshlog.Logger
+	logTag            string
 }
 
 func NewCPICmdRunner(
 	cmdRunner boshsys.CmdRunner,
 	cpi CPI,
+	rubyReleaseFinder bitemplateerb.RubyReleaseFinder,
 	logger boshlog.Logger,
 ) CPICmdRunner {
 	return &cpiCmdRunner{
-		cmdRunner: cmdRunner,
-		cpi:       cpi,
-		logger:    logger,
-		logTag:    "cpiCmdRunner",
+		cmdRunner:         cmdRunner,
+		cpi:               cpi,
+		rubyReleaseFinder: rubyReleaseFinder,
+		logger:            logger,
+		logTag:            "cpiCmdRunner",
 	}
 }
 
@@ -85,11 +90,12 @@ func (r *cpiCmdRunner) Run(context CmdContext, method string, args ...interface{
 
 	cmdPath := r.cpi.ExecutablePath()
 	cmd := boshsys.Command{
-		Name: cmdPath,
+		Name: "bash",
+		Args: []string{cmdPath},
 		Env: map[string]string{
-			"BOSH_PACKAGES_DIR": r.cpi.PackagesDir,
-			"BOSH_JOBS_DIR":     r.cpi.JobsDir,
-			"PATH":              "/usr/local/bin:/usr/bin:/bin:/mingw64/bin",
+			"BOSH_PACKAGES_DIR": strings.Replace(r.cpi.PackagesDir, "\\", "/", -1),
+			"BOSH_JOBS_DIR":     strings.Replace(r.cpi.JobsDir, "\\", "/", -1),
+			"PATH":              r.rubyReleaseFinder.RubyDir() + ":/usr/local/bin:/usr/bin:/bin:/mingw64/bin",
 		},
 		UseIsolatedEnv: false,
 		Stdin:          bytes.NewReader(inputBytes),

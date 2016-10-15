@@ -3,6 +3,7 @@ package erbrenderer
 import (
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 )
@@ -10,6 +11,7 @@ import (
 // RubyReleaseFinder is used to locate the installed ruby that comes with the CPI
 type RubyReleaseFinder interface {
 	RubyExecutable() string
+	RubyDir() string
 }
 
 type rubyReleaseFinder struct {
@@ -28,6 +30,10 @@ func NewRubyReleaseFinder(
 		logger:         logger,
 		logTag:         "rubyReleaseFinder",
 	}
+}
+
+func (r rubyReleaseFinder) RubyDir() string {
+	return strings.Replace(filepath.Dir(r.RubyExecutable()), "\\", "/", -1)
 }
 
 func (r rubyReleaseFinder) RubyExecutable() string {

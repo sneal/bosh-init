@@ -2,6 +2,7 @@ package cloud
 
 import (
 	biinstall "github.com/cloudfoundry/bosh-init/installation"
+	bitemplateerb "github.com/cloudfoundry/bosh-init/templatescompiler/erbrenderer"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
@@ -12,20 +13,23 @@ type Factory interface {
 }
 
 type factory struct {
-	fs        boshsys.FileSystem
-	cmdRunner boshsys.CmdRunner
-	logger    boshlog.Logger
+	fs                boshsys.FileSystem
+	cmdRunner         boshsys.CmdRunner
+	rubyReleaseFinder bitemplateerb.RubyReleaseFinder
+	logger            boshlog.Logger
 }
 
 func NewFactory(
 	fs boshsys.FileSystem,
 	cmdRunner boshsys.CmdRunner,
+	rubyReleaseFinder bitemplateerb.RubyReleaseFinder,
 	logger boshlog.Logger,
 ) Factory {
 	return &factory{
-		fs:        fs,
-		cmdRunner: cmdRunner,
-		logger:    logger,
+		fs:                fs,
+		cmdRunner:         cmdRunner,
+		rubyReleaseFinder: rubyReleaseFinder,
+		logger:            logger,
 	}
 }
 
@@ -43,6 +47,6 @@ func (f *factory) NewCloud(installation biinstall.Installation, directorID strin
 		return nil, bosherr.Errorf("Installed CPI job '%s' does not contain the required executable '%s'", cpiJob.Name, cmdPath)
 	}
 
-	cpiCmdRunner := NewCPICmdRunner(f.cmdRunner, cpi, f.logger)
+	cpiCmdRunner := NewCPICmdRunner(f.cmdRunner, cpi, f.rubyReleaseFinder, f.logger)
 	return NewCloud(cpiCmdRunner, directorID, f.logger), nil
 }

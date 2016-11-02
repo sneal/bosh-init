@@ -106,6 +106,9 @@ func (r *cpiCmdRunner) Run(context CmdContext, method string, args ...interface{
 		return CmdOutput{}, bosherr.WrapErrorf(err, "Executing external CPI command: '%s'", cmdPath)
 	}
 
+	// trim BOM
+	stdout = strings.TrimPrefix(stdout, "\xef\xbb\xbf")
+
 	cmdOutput := CmdOutput{}
 	err = json.Unmarshal([]byte(stdout), &cmdOutput)
 	if err != nil {

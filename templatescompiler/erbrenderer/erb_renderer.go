@@ -2,7 +2,10 @@ package erbrenderer
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
@@ -73,6 +76,19 @@ func (r erbRenderer) Render(srcPath, dstPath string, context TemplateEvaluationC
 	_, _, _, err = r.runner.RunComplexCommand(command)
 	if err != nil {
 		return bosherr.WrapError(err, "Running ruby to render templates")
+	}
+
+	// strip off any CRLF chars from the rendered templates
+	if runtime.GOOS == "windows" {
+		data, err := ioutil.ReadFile(dstPath)
+		if err != nil {
+			return bosherr.WrapError(err, "Reading rendered template")
+		}
+		strippedData := strings.Replace(string(data), "\r\n", "\n", -1)
+		err = ioutil.WriteFile(dstPath, []byte(strippedData), 0644)
+		if err != nil {
+			return bosherr.WrapError(err, "Writing CRLF stripped rendered template")
+		}
 	}
 
 	return nil

@@ -49,6 +49,12 @@ var _ = Describe("RubyRelease", func() {
 		It("returns ruby dir", func() {
 			Expect(rubyRelease.BinDir()).To(Equal(boshPkgDir + "ruby_aws_cpi/bin"))
 		})
+
+		It("returns ruby dir cached", func() {
+			binDir := rubyRelease.BinDir()                    // this causes the result to be cached
+			fs.SetGlob(boshPkgDir+RubySearchGlob, []string{}) // clear glob result
+			Expect(rubyRelease.BinDir()).To(Equal(binDir))
+		})
 	})
 
 	Context("ruby found in CPI release with backslashes in path", func() {

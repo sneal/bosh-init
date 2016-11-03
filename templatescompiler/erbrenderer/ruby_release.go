@@ -29,6 +29,8 @@ type rubyRelease struct {
 	fs             boshsys.FileSystem
 	logger         boshlog.Logger
 	logTag         string
+	executablePath string
+	binDir         string
 }
 
 // NewRubyRelease creates a new RubyRelease
@@ -37,7 +39,7 @@ func NewRubyRelease(
 	fs boshsys.FileSystem,
 	logger boshlog.Logger,
 ) RubyRelease {
-	return rubyRelease{
+	return &rubyRelease{
 		boshPackageDir: boshPackageDir,
 		fs:             fs,
 		logger:         logger,
@@ -45,7 +47,21 @@ func NewRubyRelease(
 	}
 }
 
-func (r rubyRelease) BinDir() string {
+func (r *rubyRelease) BinDir() string {
+	if len(r.binDir) == 0 {
+		r.binDir = r.findBinDir()
+	}
+	return r.binDir
+}
+
+func (r *rubyRelease) ExecutablePath() string {
+	if len(r.executablePath) == 0 {
+		r.executablePath = r.findExecutablePath()
+	}
+	return r.executablePath
+}
+
+func (r *rubyRelease) findBinDir() string {
 	rubyExe := r.ExecutablePath()
 	if rubyExe == "ruby" {
 		return ""
@@ -53,7 +69,7 @@ func (r rubyRelease) BinDir() string {
 	return path.Dir(rubyExe)
 }
 
-func (r rubyRelease) ExecutablePath() string {
+func (r *rubyRelease) findExecutablePath() string {
 	matches, err := r.fs.Glob(path.Join(r.boshPackageDir, r.rubySearchString()))
 	if err != nil || len(matches) == 0 {
 		r.logger.Debug(r.logTag, "Couldn't find the ruby bundled with the cpi release, defaulting to system ruby")
@@ -62,7 +78,7 @@ func (r rubyRelease) ExecutablePath() string {
 	return strings.Replace(matches[0], "\\", "/", -1)
 }
 
-func (r rubyRelease) rubySearchString() string {
+func (r *rubyRelease) rubySearchString() string {
 	if runtime.GOOS == "windows" {
 		return RubySearchGlobWindows
 	}

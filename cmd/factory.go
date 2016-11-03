@@ -194,30 +194,6 @@ func (f *factory) loadSSHTunnelFactory() bisshtunnel.Factory {
 	return f.sshTunnelFactory
 }
 
-func (f *factory) loadInstanceManagerFactory() biinstance.ManagerFactory {
-	if f.instanceManagerFactory != nil {
-		return f.instanceManagerFactory
-	}
-
-	f.instanceManagerFactory = biinstance.NewManagerFactory(
-		f.loadSSHTunnelFactory(),
-		f.loadInstanceFactory(),
-		f.logger,
-	)
-	return f.instanceManagerFactory
-}
-
-func (f *factory) loadInstanceFactory() biinstance.Factory {
-	if f.instanceFactory != nil {
-		return f.instanceFactory
-	}
-
-	f.instanceFactory = biinstance.NewFactory(
-		f.loadBuilderFactory(),
-	)
-	return f.instanceFactory
-}
-
 func (f *factory) loadReleaseJobResolver() bideplrel.JobResolver {
 	if f.releaseJobResolver != nil {
 		return f.releaseJobResolver
@@ -225,34 +201,6 @@ func (f *factory) loadReleaseJobResolver() bideplrel.JobResolver {
 
 	f.releaseJobResolver = bideplrel.NewJobResolver(f.loadReleaseManager())
 	return f.releaseJobResolver
-}
-
-func (f *factory) loadBuilderFactory() biinstancestate.BuilderFactory {
-	if f.stateBuilderFactory != nil {
-		return f.stateBuilderFactory
-	}
-
-	erbRenderer := bitemplateerb.NewERBRenderer(f.fs, f.loadCMDRunner(), f.logger)
-	jobRenderer := bitemplate.NewJobRenderer(erbRenderer, f.fs, f.logger)
-	jobListRenderer := bitemplate.NewJobListRenderer(jobRenderer, f.logger)
-
-	sha1Calculator := bicrypto.NewSha1Calculator(f.fs)
-
-	renderedJobListCompressor := bitemplate.NewRenderedJobListCompressor(
-		f.fs,
-		f.loadCompressor(),
-		sha1Calculator,
-		f.logger,
-	)
-
-	f.stateBuilderFactory = biinstancestate.NewBuilderFactory(
-		f.loadCompiledPackageRepo(),
-		f.loadReleaseJobResolver(),
-		jobListRenderer,
-		renderedJobListCompressor,
-		f.logger,
-	)
-	return f.stateBuilderFactory
 }
 
 func (f *factory) loadDeploymentFactory() bidepl.Factory {
@@ -383,15 +331,6 @@ func (f *factory) loadReleaseSetValidator() birelsetmanifest.Validator {
 	return f.releaseSetValidator
 }
 
-func (f *factory) loadCloudFactory() bicloud.Factory {
-	if f.cloudFactory != nil {
-		return f.cloudFactory
-	}
-
-	f.cloudFactory = bicloud.NewFactory(f.fs, f.loadCMDRunner(), f.logger)
-	return f.cloudFactory
-}
-
 type deploymentManagerFactory2 struct {
 	f                             *factory
 	deploymentManifestPath        string
@@ -407,6 +346,7 @@ type deploymentManagerFactory2 struct {
 	stemcellManagerFactory        bistemcell.ManagerFactory
 	installerFactory              biinstall.InstallerFactory
 	deployer                      bidepl.Deployer
+	rubyRelease                   bitemplateerb.RubyRelease
 }
 
 func (d *deploymentManagerFactory2) loadDeploymentPreparer() (DeploymentPreparer, error) {
@@ -427,7 +367,7 @@ func (d *deploymentManagerFactory2) loadDeploymentPreparer() (DeploymentPreparer
 		d.loadLegacyDeploymentStateMigrator(),
 		d.f.loadReleaseManager(),
 		deploymentRecord,
-		d.f.loadCloudFactory(),
+		d.loadCloudFactory(),
 		d.loadStemcellManagerFactory(),
 		d.f.loadAgentClientFactory(),
 		d.loadVMManagerFactory(),
@@ -455,7 +395,7 @@ func (d *deploymentManagerFactory2) loadDeploymentDeleter() (DeploymentDeleter, 
 		d.f.logger,
 		d.loadDeploymentStateService(),
 		d.f.loadReleaseManager(),
-		d.f.loadCloudFactory(),
+		d.loadCloudFactory(),
 		d.f.loadAgentClientFactory(),
 		d.f.loadBlobstoreFactory(),
 		d.loadDeploymentManagerFactory(),
@@ -467,6 +407,77 @@ func (d *deploymentManagerFactory2) loadDeploymentDeleter() (DeploymentDeleter, 
 		NewTempRootConfigurator(d.f.fs),
 		d.loadTargetProvider(),
 	), nil
+}
+
+func (d *deploymentManagerFactory2) loadInstanceManagerFactory() biinstance.ManagerFactory {
+	if d.f.instanceManagerFactory != nil {
+		return d.f.instanceManagerFactory
+	}
+
+	d.f.instanceManagerFactory = biinstance.NewManagerFactory(
+		d.f.loadSSHTunnelFactory(),
+		d.loadInstanceFactory(),
+		d.f.logger,
+	)
+	return d.f.instanceManagerFactory
+}
+
+func (d *deploymentManagerFactory2) loadInstanceFactory() biinstance.Factory {
+	if d.f.instanceFactory != nil {
+		return d.f.instanceFactory
+	}
+
+	d.f.instanceFactory = biinstance.NewFactory(
+		d.loadBuilderFactory(),
+	)
+	return d.f.instanceFactory
+}
+
+func (d *deploymentManagerFactory2) loadRubyRelease() bitemplateerb.RubyRelease {
+	if d.rubyRelease != nil {
+		return d.rubyRelease
+	}
+	target, _ := d.loadTargetProvider().NewTarget()
+	d.rubyRelease = bitemplateerb.NewRubyRelease(target.PackagesPath(), d.f.fs, d.f.logger)
+	return d.rubyRelease
+}
+
+func (d *deploymentManagerFactory2) loadBuilderFactory() biinstancestate.BuilderFactory {
+	if d.f.stateBuilderFactory != nil {
+		return d.f.stateBuilderFactory
+	}
+
+	rubyRelease := d.loadRubyRelease()
+	erbRenderer := bitemplateerb.NewERBRenderer(d.f.fs, d.f.loadCMDRunner(), rubyRelease, d.f.logger)
+	jobRenderer := bitemplate.NewJobRenderer(erbRenderer, d.f.fs, d.f.logger)
+	jobListRenderer := bitemplate.NewJobListRenderer(jobRenderer, d.f.logger)
+
+	sha1Calculator := bicrypto.NewSha1Calculator(d.f.fs)
+
+	renderedJobListCompressor := bitemplate.NewRenderedJobListCompressor(
+		d.f.fs,
+		d.f.loadCompressor(),
+		sha1Calculator,
+		d.f.logger,
+	)
+
+	d.f.stateBuilderFactory = biinstancestate.NewBuilderFactory(
+		d.f.loadCompiledPackageRepo(),
+		d.f.loadReleaseJobResolver(),
+		jobListRenderer,
+		renderedJobListCompressor,
+		d.f.logger,
+	)
+	return d.f.stateBuilderFactory
+}
+
+func (d *deploymentManagerFactory2) loadCloudFactory() bicloud.Factory {
+	if d.f.cloudFactory != nil {
+		return d.f.cloudFactory
+	}
+
+	d.f.cloudFactory = bicloud.NewFactory(d.f.fs, d.f.loadCMDRunner(), d.f.logger)
+	return d.f.cloudFactory
 }
 
 func (d *deploymentManagerFactory2) loadDeploymentStateService() biconfig.DeploymentStateService {
@@ -546,7 +557,7 @@ func (d *deploymentManagerFactory2) loadDeploymentManagerFactory() bidepl.Manage
 
 	d.deploymentManagerFactory = bidepl.NewManagerFactory(
 		d.loadVMManagerFactory(),
-		d.f.loadInstanceManagerFactory(),
+		d.loadInstanceManagerFactory(),
 		d.loadDiskManagerFactory(),
 		d.loadStemcellManagerFactory(),
 		d.f.loadDeploymentFactory(),
@@ -586,7 +597,7 @@ func (d *deploymentManagerFactory2) loadDeployer() bidepl.Deployer {
 
 	d.deployer = bidepl.NewDeployer(
 		d.loadVMManagerFactory(),
-		d.f.loadInstanceManagerFactory(),
+		d.loadInstanceManagerFactory(),
 		d.f.loadDeploymentFactory(),
 		d.f.logger,
 	)

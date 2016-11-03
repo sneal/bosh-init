@@ -14,10 +14,11 @@ type ERBRenderer interface {
 }
 
 type erbRenderer struct {
-	fs     boshsys.FileSystem
-	runner boshsys.CmdRunner
-	logger boshlog.Logger
-	logTag string
+	fs          boshsys.FileSystem
+	runner      boshsys.CmdRunner
+	rubyRelease RubyRelease
+	logger      boshlog.Logger
+	logTag      string
 
 	rendererScript string
 }
@@ -25,13 +26,15 @@ type erbRenderer struct {
 func NewERBRenderer(
 	fs boshsys.FileSystem,
 	runner boshsys.CmdRunner,
+	rubyRelease RubyRelease,
 	logger boshlog.Logger,
 ) ERBRenderer {
 	return erbRenderer{
-		fs:     fs,
-		runner: runner,
-		logger: logger,
-		logTag: "erbRenderer",
+		fs:          fs,
+		runner:      runner,
+		rubyRelease: rubyRelease,
+		logger:      logger,
+		logTag:      "erbRenderer",
 
 		rendererScript: templateEvaluationContextRb,
 	}
@@ -63,7 +66,7 @@ func (r erbRenderer) Render(srcPath, dstPath string, context TemplateEvaluationC
 	}
 
 	command := boshsys.Command{
-		Name: "ruby",
+		Name: r.rubyRelease.ExecutablePath(),
 		Args: []string{rendererScriptPath, contextPath, srcPath, dstPath},
 	}
 

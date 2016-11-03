@@ -92,7 +92,8 @@ var _ = Describe("JobEvaluationContext", func() {
 		logger := boshlog.NewLogger(boshlog.LevelNone)
 		fs := boshsys.NewOsFileSystem(logger)
 		commandRunner := boshsys.NewExecCmdRunner(logger)
-		erbRenderer = erbrenderer.NewERBRenderer(fs, commandRunner, logger)
+		rubyRelease := erbrenderer.NewRubyRelease("/fake/cpi", fs, logger)
+		erbRenderer = erbrenderer.NewERBRenderer(fs, commandRunner, rubyRelease, logger)
 
 		srcFile, err := ioutil.TempFile("", "source.txt.erb")
 		Expect(err).ToNot(HaveOccurred())

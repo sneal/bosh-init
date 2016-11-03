@@ -24,9 +24,10 @@ var _ = Describe("ErbRenderer", func() {
 		logger := boshlog.NewLogger(boshlog.LevelNone)
 		fs = fakesys.NewFakeFileSystem()
 		runner = fakesys.NewFakeCmdRunner()
+		rubyRelease := NewRubyRelease("/fake/cpi", fs, logger)
 		context = &fakebierbrenderer.FakeTemplateEvaluationContext{}
 
-		erbRenderer = NewERBRenderer(fs, runner, logger)
+		erbRenderer = NewERBRenderer(fs, runner, rubyRelease, logger)
 		fs.TempDirDir = "fake-temp-dir"
 	})
 
